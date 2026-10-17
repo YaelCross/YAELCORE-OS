@@ -1,0 +1,8 @@
+openai
+anthropic
+python-dotenv
+SpeechRecognition
+PyAudio
+pywin32
+opencv-python
+Pillow

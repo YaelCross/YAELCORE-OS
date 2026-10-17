@@ -8,6 +8,9 @@ load_dotenv()
 
 
 class Assistant:
+    """Conexión con ChatGPT (OpenAI)."""
+
+    nombre = "ChatGPT"
 
     def __init__(self):
         api_key = os.getenv("OPENAI_API_KEY")
@@ -18,18 +21,17 @@ class Assistant:
             )
 
         self.client = OpenAI(api_key=api_key)
+        self.model = os.getenv("OPENAI_MODEL", "gpt-5")
 
-    def ask(self, question):
+    def ask(self, question, instructions, history=None):
+
+        messages = list(history or [])
+        messages.append({"role": "user", "content": question})
 
         response = self.client.responses.create(
-            model="gpt-5",
-            instructions=(
-                "Eres JARVIS, el asistente personal de Yael. "
-                "Hablas siempre en español. "
-                "Eres profesional, elegante, claro y directo. "
-                "Ayudas a Yael de forma práctica."
-            ),
-            input=question
+            model=self.model,
+            instructions=instructions,
+            input=messages,
         )
 
-        return response.output_text
+        return response.output_text.strip()

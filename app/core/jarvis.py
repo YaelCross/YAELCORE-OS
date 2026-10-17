@@ -3,7 +3,7 @@ from datetime import datetime
 from app.voice.speaker import Speaker
 from app.voice.listener import Listener
 from app.commands.command_manager import CommandManager
-from app.ai.assistant import Assistant
+from app.ai.brain import Brain
 from app.core.state import JarvisState
 
 
@@ -11,14 +11,14 @@ class Jarvis:
 
     def __init__(self):
         self.name = "JARVIS"
-        self.version = "0.1.0"
+        self.version = "0.2.0"
 
         self.state = JarvisState.BOOTING
 
         self.speaker = Speaker()
         self.listener = Listener()
         self.command_manager = CommandManager()
-        self.assistant = Assistant()
+        self.brain = Brain()
 
     def get_greeting(self):
         hour = datetime.now().hour
@@ -35,6 +35,7 @@ class Jarvis:
         mensaje = (
             f"{self.get_greeting()}, señor Yael. "
             "Todos los sistemas están operativos. "
+            f"Inteligencias en línea: {' y '.join(self.brain.disponibles())}. "
             "Estoy listo para asistirle."
         )
 
@@ -79,9 +80,16 @@ class Jarvis:
             self.state = JarvisState.PROCESSING
             print("ESTADO:", self.state.value)
 
-            respuesta = self.command_manager.execute(
+            # Comandos para elegir IA: "modo equipo",
+            # "usa claude", "pregúntale a chatgpt ..."
+            respuesta = self.brain.handle_control(
                 comando
             )
+
+            if respuesta is None:
+                respuesta = self.command_manager.execute(
+                    comando
+                )
 
             # ==========================================
             # IA
@@ -93,7 +101,7 @@ class Jarvis:
                     "DEBUG 2 - Enviando comando a la IA..."
                 )
 
-                respuesta = self.assistant.ask(
+                respuesta = self.brain.ask(
                     comando
                 )
 
