@@ -7,6 +7,8 @@ navegador en la misma red: http://<ip-de-la-pc>:8765
 """
 
 import hmac
+from datetime import datetime
+import time
 import json
 import mimetypes
 import os
@@ -48,6 +50,7 @@ class CentroDeMando:
         self.db = almacen or Almacen()
         self.ia = copiloto or CopilotoIA()
         self.sesiones = {}
+        self.fallos = {}
 
     # ------------------------------------------------------------------
     # Sesión y permisos
@@ -57,9 +60,16 @@ class CentroDeMando:
         miembro = self.db.miembro_por_nombre(str(datos.get("nombre", "")).strip())
         if not miembro:
             raise ErrorAPI(401, "Ese integrante no existe.")
+        clave = miembro["nombre"].lower()
+        ahora_ = time.monotonic()
+        recientes = [t for t in self.fallos.get(clave, []) if ahora_ - t < 600]
+        if len(recientes) >= 5:
+            raise ErrorAPI(429, "Demasiados intentos. Espera 10 minutos.")
         esperado = _pin_de(miembro["nombre"])
         if esperado and not hmac.compare_digest(str(datos.get("pin", "")), esperado):
+            self.fallos[clave] = recientes + [ahora_]
             raise ErrorAPI(401, "PIN incorrecto.")
+        self.fallos.pop(clave, None)
         token = secrets.token_urlsafe(32)
         self.sesiones[token] = miembro["id"]
         self.db.registrar(miembro["id"], f"{miembro['nombre']} entró al Centro de Mando.")
@@ -75,6 +85,15 @@ class CentroDeMando:
 
     def _puede_operar(self, yo, agente):
         return self._es_jefe(yo) or agente["operador_id"] == yo["id"]
+
+    def _puede_ver_tarea(self, yo, tarea):
+        # Privacidad: el jefe ve todo; cada integrante ve solo las tareas de
+        # sus propios agentes y las que él mismo creó.
+        return (self._es_jefe(yo) or tarea["operador_id"] == yo["id"]
+                or tarea["creador_id"] == yo["id"])
+
+    def tareas(self, yo, agente_id=None):
+        return [t for t in self.db.tareas(agente_id) if self._puede_ver_tarea(yo, t)]
 
     def _agente_o_404(self, agente_id):
         agente = self.db.agente(agente_id)
@@ -94,13 +113,29 @@ class CentroDeMando:
     # Lecturas
     # ------------------------------------------------------------------
 
+    def _resumen_propio(self, yo):
+        hoy = datetime.now().date().isoformat()
+        mias = self.tareas(yo)
+        abiertas = [t for t in mias if t["estado"] != "hecho"]
+        base = self.db.resumen()
+        base.update({
+            "abiertas": len(abiertas),
+            "hechas": len(mias) - len(abiertas),
+            "vencidas": sum(1 for t in abiertas if t["fecha_limite"] and t["fecha_limite"] < hoy),
+            "automatizables": sum(1 for t in abiertas if t["automatizable"]),
+            "recurrentes": sum(1 for t in abiertas if t["recurrencia"] != "ninguna"),
+        })
+        return base
+
     def estado(self, yo):
+        jefe = self._es_jefe(yo)
         return {
             "yo": yo,
             "miembros": self.db.miembros(),
             "agentes": self.db.agentes(),
-            "resumen": self.db.resumen(),
-            "actividad": self.db.actividad(),
+            "resumen": self.db.resumen() if jefe else self._resumen_propio(yo),
+            "actividad": self.db.actividad() if jefe else
+                         [x for x in self.db.actividad(200) if x["autor_id"] == yo["id"]][:40],
             "ia": self.ia.disponibles(),
             "catalogos": {
                 "estados": ESTADOS_TAREA, "prioridades": PRIORIDADES,
@@ -111,12 +146,13 @@ class CentroDeMando:
 
     def detalle_agente(self, yo, agente_id):
         agente = self._agente_o_404(agente_id)
+        propio = self._puede_operar(yo, agente)
         return {
             "agente": agente,
-            "puede_operar": self._puede_operar(yo, agente),
-            "tareas": self.db.tareas(agente_id),
+            "puede_operar": propio,
+            "tareas": self.tareas(yo, agente_id),
             "conocimiento": self.db.conocimiento(agente_id),
-            "mensajes": self.db.mensajes(agente_id),
+            "mensajes": self.db.mensajes(agente_id) if propio else [],
         }
 
     # ------------------------------------------------------------------
@@ -228,7 +264,7 @@ class CentroDeMando:
 
     def actualizar_tarea(self, yo, tarea_id, d):
         tarea = self.db.tarea(tarea_id)
-        if not tarea:
+        if not tarea or not self._puede_ver_tarea(yo, tarea):
             raise ErrorAPI(404, "Tarea no encontrada.")
         agente = self._agente_o_404(tarea["agente_id"])
         if not (self._puede_operar(yo, agente) or tarea["creador_id"] == yo["id"]):
@@ -266,7 +302,7 @@ class CentroDeMando:
 
     def borrar_tarea(self, yo, tarea_id):
         tarea = self.db.tarea(tarea_id)
-        if not tarea:
+        if not tarea or not self._puede_ver_tarea(yo, tarea):
             raise ErrorAPI(404, "Tarea no encontrada.")
         if not (self._es_jefe(yo) or tarea["creador_id"] == yo["id"]):
             raise ErrorAPI(403, "Solo quien la creó o el jefe pueden borrarla.")
@@ -278,12 +314,13 @@ class CentroDeMando:
     # ------------------------------------------------------------------
 
     def enviar_mensaje(self, yo, agente_id, d):
-        self._agente_o_404(agente_id)
+        self._exigir_operador(yo, self._agente_o_404(agente_id))
         texto = _texto(d, "texto", obligatorio=True, maximo=5000)
         return self.db.crear_mensaje(agente_id, yo["id"], texto)
 
     def consultar_ia(self, yo, agente_id, d):
         agente = self._agente_o_404(agente_id)
+        self._exigir_operador(yo, agente)
         pregunta = _texto(d, "pregunta", obligatorio=True, maximo=5000)
         historial = self.db.mensajes(agente_id, limite=20)
         if pregunta not in ACCIONES:
@@ -464,7 +501,7 @@ def crear_manejador(centro):
                         "Set-Cookie": "centro=; Path=/; Max-Age=0",
                     })
                 if accion == "tareas":
-                    return self._json(200, centro.db.tareas())
+                    return self._json(200, centro.tareas(yo))
 
                 funcion = getattr(centro, accion)
                 if metodo in ("POST", "PATCH"):
