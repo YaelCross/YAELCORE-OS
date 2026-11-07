@@ -56,3 +56,57 @@ puedes hacer preguntas de seguimiento ("¿y en inglés?").
 
 El modo inicial se cambia en `.env` con `JARVIS_MODO=equipo|claude|chatgpt`,
 y los modelos con `OPENAI_MODEL` y `CLAUDE_MODEL`.
+
+## Centro de Mando: el equipo trabajando con sus agentes
+
+Interfaz web donde cada persona real (Yael, Frida, Efren, Nova…) controla
+a su agente, le pasa toda la información necesaria y automatiza tareas.
+Replica el diagrama de la organización: Frente, front, back, interfaz,
+núcleo, agentes, integrantes MKT, jefe Yael, Frida, Efren y Nova.
+
+### Cómo abrirlo
+
+- Doble clic en **`centro_mando.bat`**, o
+- dile a JARVIS **"abre el centro de mando"**, o
+- `python centro_mando.py`
+
+En la consola aparecen dos direcciones:
+
+- **En esta PC:** `http://localhost:8765`
+- **Para tu equipo:** `http://<ip-de-tu-pc>:8765` — compártela con Frida,
+  Efren y Nova; entran desde su navegador si están en la misma red (Wi-Fi).
+  Si Windows pregunta por el firewall, permite el acceso en redes privadas.
+
+### Qué puede hacer cada quien
+
+| Sección | Para qué sirve |
+|---------|----------------|
+| **Mapa** | Tu diagrama en vivo. Toca a una persona para abrir su agente o un área para ver sus tareas. Muestra tareas abiertas y vencidas. |
+| **Agente** | Misión del agente, sus tareas, **"Pasarle información"** (su memoria) y el **canal** con el equipo y el **copiloto IA**. |
+| **Tareas** | Tablero Pendiente → En curso → Revisión → Hecho (arrastra las tarjetas). Filtra por agente, área o persona. |
+| **Conocimiento** | Toda la información que el equipo le ha pasado a los agentes. Yael puede enviar información general a **todos** los agentes. |
+| **Equipo** | (Solo Yael) Crear agentes, asignar quién los controla y agregar integrantes. |
+
+**Copiloto IA:** cada agente usa Claude/ChatGPT con su misión, su
+información y sus tareas. Botones rápidos: *¿Qué hago primero?*,
+*¿Qué automatizo?*, *Resumen para Yael* y *¿Qué info me falta?*.
+
+**Automatización:** marca una tarea como *se repite* (diaria, semanal,
+mensual). Al terminarla, el sistema crea sola la siguiente. Marca también
+las tareas *automatizables* para que el copiloto proponga cómo automatizarlas.
+
+**Permisos:** Yael ve y controla todo. Cada integrante opera su propio
+agente; cualquiera puede pasarle tareas o mensajes a otro agente para
+coordinarse.
+
+### PIN de acceso
+
+Define un PIN por persona en `.env` (ver `.env.example`):
+
+```
+CENTRO_PIN_YAEL=1234
+CENTRO_PIN_FRIDA=...
+```
+
+Si alguien no tiene PIN, puede entrar sin contraseña (útil solo para
+pruebas). Los datos se guardan en `data/centro_mando.db` (no se sube a git).
