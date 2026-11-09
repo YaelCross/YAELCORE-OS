@@ -125,3 +125,8 @@ pruebas). Los datos se guardan en `data/centro_mando.db` (no se sube a git).
 - Acceso: si la red de la oficina falla o alguien está fuera, ejecuta `acceso_remoto.bat` para obtener una liga HTTPS temporal (requiere `winget install --id Cloudflare.cloudflared`).
 
 Pruebas: `.venv\Scripts\python.exe -m unittest test_centro_automatizacion test_centro_privacidad -v`
+
+### Meta Ads (solo lectura)
+Las tareas cuyo título habla de campañas/publicidad/anuncios reciben los **datos reales** de Meta Ads (ayer y últimos 7 días por campaña: gasto, resultados, costo por resultado, CTR, CPC, frecuencia) más alertas automáticas (gasto sin resultados, CTR bajo, fatiga, costo por resultado +30 %). El jefe también puede preguntar por campañas en el chat de su agente. El conector **no modifica** campañas ni presupuestos.
+
+Configura `META_ACCESS_TOKEN` y `META_AD_ACCOUNTS` en `.env` y verifica con `.venv\Scripts\python.exe probar_meta.py`.

@@ -40,12 +40,14 @@ INSTRUCCION_AUTOMATICA = """Ejecuta ahora esta tarea programada: «{titulo}».
 Detalle: {detalle}
 
 Reglas:
-- No tienes acceso a sistemas externos (Meta Ads, Google Ads, Mercado Libre,
-  Instagram, Facebook, WhatsApp). NO inventes cifras, resultados ni datos.
-- Trabaja solo con la información de tu conocimiento y de las tareas.
-- Entrega, en español y en máximo 15 líneas:
+- No tienes acceso directo a sistemas externos. Si abajo vienen "DATOS REALES",
+  úsalos; si no vienen, NO inventes cifras, resultados ni datos.
+- Trabaja solo con esos datos, tu conocimiento y las tareas.
+- Entrega, en español y en máximo 20 líneas:
   1. Lo que ya dejas preparado (checklist, borrador, mensaje o análisis).
   2. Qué datos faltan para completarla y de dónde sacarlos.
+  Con datos de campañas: resumen por cuenta, alertas priorizadas y 3 acciones
+  recomendadas (sin ejecutarlas).
   3. El siguiente paso concreto para la persona responsable.
 """
 
@@ -143,13 +145,19 @@ class Automatizador(threading.Thread):
         if not agente:
             return
         self.db.actualizar_tarea(tarea["id"], estado="en_curso")
+        datos = ""
+        from app.centro import meta_ads
+        if meta_ads.es_tarea_de_campanas(tarea["titulo"]):
+            datos = "\n\n" + meta_ads.reporte() + (
+                "\n\nUsa SOLO estos datos para las cifras. Prioriza las alertas y "
+                "recomienda acciones; no ejecutes cambios: los decide una persona.")
         try:
             proveedor, texto = self.centro.ia.preguntar(
                 agente,
                 self.db.conocimiento(agente["id"]),
                 self.db.tareas(agente["id"]),
                 [],
-                INSTRUCCION_AUTOMATICA.format(titulo=tarea["titulo"], detalle=tarea["detalle"] or "(sin detalle)"),
+                INSTRUCCION_AUTOMATICA.format(titulo=tarea["titulo"], detalle=tarea["detalle"] or "(sin detalle)") + datos,
             )
         except Exception as error:
             self.db.actualizar_tarea(tarea["id"], estado="pendiente")

@@ -18,6 +18,7 @@ class IAFalsa:
 
     def ask(self, pregunta, instrucciones, historial=None):
         self.llamadas += 1
+        self.ultima = pregunta
         if self.falla:
             raise RuntimeError(f"{self.nombre} sin servicio")
         return f"Checklist preparado por {self.nombre}"
@@ -96,6 +97,13 @@ class AutomatizacionTest(unittest.TestCase):
         self.assertEqual(len(self.auto._registros("resumen", "2026-11-09")), 1)
         self.auto.ciclo(self.hoy.replace(hour=18, minute=40))
         self.assertEqual(len(self.auto._registros("resumen", "2026-11-09")), 1)
+
+    def test_tarea_de_campanas_recibe_datos_de_meta(self):
+        from unittest import mock
+        with mock.patch("app.centro.meta_ads.reporte", return_value="DATOS REALES DE META ADS · prueba"):
+            self.tarea("09:00 · Revisión y seguimiento de campañas publicitarias")
+            self.auto.ciclo(self.hoy.replace(hour=9, minute=1))
+        self.assertIn("DATOS REALES DE META ADS · prueba", self.claude.ultima)
 
 
 if __name__ == "__main__":

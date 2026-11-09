@@ -329,10 +329,15 @@ class CentroDeMando:
             self.db.crear_mensaje(agente_id, yo["id"], pregunta)
         else:
             self.db.crear_mensaje(agente_id, yo["id"], "⚡ " + ACCIONES[pregunta])
+        consulta = pregunta
+        from app.centro import meta_ads
+        if (self._es_jefe(yo) and pregunta not in ACCIONES
+                and meta_ads.es_tarea_de_campanas(pregunta) and meta_ads.configurado()):
+            consulta = pregunta + "\n\n" + meta_ads.reporte()
         try:
             nombre_ia, respuesta = self.ia.preguntar(
                 agente, self.db.conocimiento(agente_id), self.db.tareas(agente_id),
-                historial, pregunta,
+                historial, consulta,
             )
         except RuntimeError as error:
             raise ErrorAPI(503, str(error))
@@ -569,6 +574,9 @@ def iniciar(host=None, puerto=None, abrir_navegador=False):
     print(" Automatización:   ", "activa (resumen diario " + os.getenv("CENTRO_RESUMEN_HORA", "18:30") + ")"
           if os.getenv("CENTRO_AUTOMATIZAR", "si").lower() not in ("no", "0", "false") else "apagada")
     print(" Acceso de respaldo: ejecuta acceso_remoto.bat si la red local falla")
+    from app.centro import meta_ads
+    print(" Meta Ads:         ", ("conectado (" + ", ".join(n for n, _ in meta_ads.cuentas()) + ")")
+          if meta_ads.configurado() else "no conectado (ver probar_meta.py)")
     print("=" * 56)
 
     if abrir_navegador:
