@@ -215,3 +215,6 @@ main { padding: 18px; max-width: 1500px; margin: 0 auto; }
   .usuario { margin-left: 0; }
   .tarjeta-cab input { width: 100%; }
 }
+
+/* Red neuronal (solo jefe) */
+#vista-red .marco-red{display:block;width:100%;height:calc(100vh - 120px);min-height:520px;border:1px solid var(--borde, #2c2c2c);border-radius:12px;background:#161616}

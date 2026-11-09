@@ -173,9 +173,11 @@ function pintar() {
     ? `<span class="bolita" style="background:var(--verde)"></span>IA: ${esc(ia.join(" + "))}`
     : `<span class="bolita" style="background:var(--rojo)"></span>IA sin conectar`;
   $("#pestana-equipo").classList.toggle("oculto", !esJefe());
+  $("#pestana-red").classList.toggle("oculto", !esJefe());
   $("#pestana-agente").classList.toggle("oculto", !S.agenteId);
   if (S.detalle) $("#pestana-agente").textContent = S.detalle.agente.nombre;
 
+  if (S.vista === "red" && !$("#marco-red").src) $("#marco-red").src = "/red.html";
   if (S.vista === "mapa") pintarMapa();
   if (S.vista === "tareas") pintarKanban();
   if (S.vista === "conocimiento") pintarFichas();

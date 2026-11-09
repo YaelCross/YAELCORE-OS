@@ -1,0 +1,560 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Red neuronal · YAELCORE-OS</title>
+<style>
+  :root{--bg:#161616;--panel:#1f1f1f;--line:#2c2c2c;--text:#dcddde;--muted:#8a8a8a;--accent:#7f6df2}
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%;background:var(--bg);color:var(--text);font:13px/1.45 "Inter","Segoe UI",system-ui,sans-serif;overflow:hidden}
+  canvas{display:block;width:100%;height:100%;cursor:grab}
+  canvas.dragging{cursor:grabbing}
+  .bar{position:fixed;top:14px;left:14px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;max-width:calc(100% - 28px)}
+  .bar input,.bar button,.panel input,.panel select,.panel textarea,.panel button,dialog input,dialog select,dialog textarea,dialog button{
+    font:inherit;color:var(--text);background:var(--panel);border:1px solid var(--line);border-radius:7px;padding:7px 10px}
+  .bar input{width:220px}
+  button{cursor:pointer}
+  button:hover{border-color:#444}
+  button.on{border-color:var(--accent);color:#fff}
+  .chips{position:fixed;bottom:14px;left:14px;display:flex;gap:6px;flex-wrap:wrap;max-width:calc(100% - 360px)}
+  .chip{display:flex;align-items:center;gap:6px;padding:5px 10px;border-radius:99px;background:var(--panel);border:1px solid var(--line);cursor:pointer;user-select:none;font-size:12px}
+  .chip i{width:9px;height:9px;border-radius:50%}
+  .chip.off{opacity:.35}
+  .panel{position:fixed;top:14px;right:14px;width:310px;max-height:calc(100% - 28px);overflow:auto;background:rgba(31,31,31,.96);border:1px solid var(--line);border-radius:12px;padding:16px;display:none}
+  .panel.show{display:block}
+  .panel h2{margin:0 0 2px;font-size:16px;font-weight:600}
+  .panel .tipo{color:var(--muted);font-size:12px;margin-bottom:12px;display:flex;align-items:center;gap:6px}
+  .panel .tipo i{width:8px;height:8px;border-radius:50%}
+  .panel h3{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin:16px 0 6px;font-weight:600}
+  .panel textarea{width:100%;min-height:90px;resize:vertical}
+  .panel ul{list-style:none;margin:0;padding:0}
+  .panel li{padding:5px 0;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;gap:8px;align-items:center}
+  .panel li a{color:var(--text);text-decoration:none;cursor:pointer}
+  .panel li a:hover{color:#fff}
+  .panel li button{padding:1px 7px;font-size:11px;color:var(--muted)}
+  .row{display:flex;gap:6px;margin-top:10px}
+  .row>*{flex:1}
+  .x{position:absolute;top:10px;right:10px;padding:2px 8px!important}
+  .hint{position:fixed;bottom:14px;right:14px;color:var(--muted);font-size:11.5px;text-align:right}
+  .toast{position:fixed;top:60px;left:50%;transform:translateX(-50%);background:var(--panel);border:1px solid var(--accent);border-radius:8px;padding:8px 14px;display:none}
+  dialog{background:var(--panel);color:var(--text);border:1px solid var(--line);border-radius:12px;padding:18px;width:min(420px,92vw)}
+  dialog::backdrop{background:rgba(0,0,0,.55)}
+  dialog h2{margin:0 0 12px;font-size:15px}
+  dialog label{display:block;font-size:12px;color:var(--muted);margin-top:10px}
+  dialog input,dialog select,dialog textarea{width:100%;margin-top:4px}
+  dialog textarea{min-height:160px;font-family:Consolas,monospace;font-size:12px}
+  .right{display:flex;justify-content:flex-end;gap:8px;margin-top:14px}
+  @media (max-width:700px){.chips{max-width:calc(100% - 28px);bottom:44px}.panel{left:14px;width:auto;top:auto;bottom:90px;max-height:50%}.hint{display:none}}
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+
+<div class="bar">
+  <input id="buscar" placeholder="Buscar nodo…" autocomplete="off">
+  <button id="bNuevo">+ Nodo</button>
+  <button id="bConectar" title="Haz clic en dos nodos para unirlos">Conectar</button>
+  <button id="bPulsos" class="on" title="Señales viajando por la red">Pulsos</button>
+  <button id="bExportar">Copiar datos</button>
+  <button id="bImportar">Pegar datos</button>
+  <button id="bReset" title="Volver a la red original">Restablecer</button>
+</div>
+
+<div class="chips" id="chips"></div>
+<div class="hint">Arrastra nodos · rueda para zoom · arrastra el fondo para mover · clic para ver conexiones</div>
+<div class="toast" id="toast"></div>
+
+<aside class="panel" id="panel">
+  <button class="x" id="cerrar">✕</button>
+  <h2 id="pNombre"></h2>
+  <div class="tipo" id="pTipo"></div>
+  <h3>Nota</h3>
+  <textarea id="pNota" placeholder="Escribe una nota para este nodo…"></textarea>
+  <h3>Conexiones <span id="pGrado"></span></h3>
+  <ul id="pLinks"></ul>
+  <div class="row"><button id="pRenombrar">Renombrar</button><button id="pBorrar">Borrar nodo</button></div>
+</aside>
+
+<dialog id="dNuevo">
+  <form method="dialog" id="fNuevo">
+    <h2>Nuevo nodo</h2>
+    <label>Nombre<input name="nombre" required maxlength="60"></label>
+    <label>Tipo<select name="tipo" id="selTipo"></select></label>
+    <label>Conectar con<select name="con" id="selCon"></select></label>
+    <div class="right"><button value="cancel" type="button" id="cNuevo">Cancelar</button><button value="ok">Crear</button></div>
+  </form>
+</dialog>
+
+<dialog id="dDatos">
+  <form method="dialog" id="fDatos">
+    <h2 id="dTitulo">Datos de la red</h2>
+    <textarea id="taDatos" spellcheck="false"></textarea>
+    <div class="right"><button value="cancel" type="button" id="cDatos">Cerrar</button><button value="ok" id="okDatos">Aplicar</button></div>
+  </form>
+</dialog>
+
+<script>
+(() => {
+"use strict";
+const TIPOS = {
+  nucleo:  {nombre:"Núcleo",      color:"#e5484d"},
+  repo:    {nombre:"Repositorios",color:"#3a8dde"},
+  unidad:  {nombre:"Unidades",    color:"#4fb05a"},
+  tec:     {nombre:"Tecnologías", color:"#13a3a3"},
+  sesion:  {nombre:"Sesiones",    color:"#f59f0b"},
+  canvas:  {nombre:"Canvas",      color:"#6b5cf5"},
+  equipo:  {nombre:"Equipo",      color:"#e07ad6"},
+  agente:  {nombre:"Agentes",     color:"#9aa4b2"},
+};
+
+const BASE = {
+  nodos: [
+    ["nucleo","00 - YAELCORE-OS (Núcleo)","Centro de todo el ecosistema YAELCORE."],
+    ["repo","YAELCORE-OS","Asistente de escritorio + Centro de Mando del equipo."],
+    ["repo","jarvis-os","Origen de YAELCORE-OS: asistente de voz para Windows."],
+    ["repo","Yaelcore-app","App propia (VYRAX)."],
+    ["repo","YAELCORE-MARCA","Marca y contenido."],
+    ["repo","YAELCORE-TRADING","Agente de trading (Forex)."],
+    ["repo","YAELCORE-AGENTS","Red de agentes de IA."],
+    ["repo","claude-code fork",""],
+    ["repo","WhatsApp Business Cloud node",""],
+    ["repo","YAELCORE 3.0 ALPHA","Base híbrida Claude + OpenAI con oficina virtual de 12 agentes."],
+    ["unidad","Unidad - Automatización y Mensajería",""],
+    ["unidad","Unidad - Asistente de Escritorio",""],
+    ["unidad","Unidad - Apps",""],
+    ["unidad","Unidad - IA y Agentes",""],
+    ["unidad","Unidad - Trading",""],
+    ["unidad","Unidad - Marca y Contenido",""],
+    ["unidad","Unidad - Herramientas",""],
+    ["unidad","Chats claude.ai - Pendientes",""],
+    ["unidad","Centro de Mando","Tareas del equipo: Yael, Frida, Efren y Nova."],
+    ["tec","Python",""],["tec","Windows",""],["tec","OpenAI API",""],["tec","Claude API",""],
+    ["tec","GitHub",""],["tec","WhatsApp Business API",""],
+    ["sesion","Sesión - WhatsApp Business Cloud node",""],
+    ["sesion","Sesión - Red de agentes de IA",""],
+    ["sesion","Sesión - Mapa Obsidian de proyectos",""],
+    ["sesion","Sesión - Claude inicia al encender",""],
+    ["canvas","Diagrama de flujo.canvas",""],
+  ],
+  links: [
+    ["00 - YAELCORE-OS (Núcleo)",["YAELCORE-OS","jarvis-os","Yaelcore-app","YAELCORE-MARCA","YAELCORE-TRADING","YAELCORE-AGENTS","claude-code fork","WhatsApp Business Cloud node","YAELCORE 3.0 ALPHA","Unidad - Automatización y Mensajería","Unidad - Asistente de Escritorio","Unidad - Apps","Unidad - IA y Agentes","Unidad - Trading","Unidad - Marca y Contenido","Unidad - Herramientas","Chats claude.ai - Pendientes","GitHub","Claude API","Sesión - WhatsApp Business Cloud node","Sesión - Red de agentes de IA","Sesión - Mapa Obsidian de proyectos","Sesión - Claude inicia al encender"]],
+    ["jarvis-os",["Unidad - Asistente de Escritorio","Unidad - Apps","Python","Windows","OpenAI API","WhatsApp Business API","Claude API","YAELCORE-MARCA","Yaelcore-app","YAELCORE-OS"]],
+    ["YAELCORE-OS",["Unidad - Asistente de Escritorio","Python","Windows","OpenAI API","Claude API","GitHub","YAELCORE-AGENTS","Sesión - Claude inicia al encender","Centro de Mando"]],
+    ["Yaelcore-app",["Unidad - Apps","Python","GitHub","WhatsApp Business API"]],
+    ["WhatsApp Business Cloud node",["WhatsApp Business API","Unidad - Automatización y Mensajería","Sesión - WhatsApp Business Cloud node","Windows","GitHub"]],
+    ["YAELCORE-AGENTS",["Unidad - IA y Agentes","Sesión - Red de agentes de IA","Claude API","OpenAI API","Python","claude-code fork","Unidad - Trading"]],
+    ["YAELCORE-TRADING",["Unidad - Trading","Claude API","Python","claude-code fork"]],
+    ["YAELCORE-MARCA",["Unidad - Marca y Contenido","GitHub"]],
+    ["claude-code fork",["Unidad - Herramientas","Unidad - IA y Agentes","Claude API","GitHub"]],
+    ["GitHub",["Chats claude.ai - Pendientes","YAELCORE-TRADING","YAELCORE-AGENTS"]],
+    ["Sesión - Mapa Obsidian de proyectos",["Diagrama de flujo.canvas"]],
+    ["YAELCORE 3.0 ALPHA",["Claude API","OpenAI API","Python","Centro de Mando"]],
+    ["Centro de Mando",["OpenAI API","Claude API"]],
+  ],
+};
+
+const CLAVE = "yc_red_neuronal_v1";
+const store = {
+  get(){ try { return JSON.parse(localStorage.getItem(CLAVE)); } catch { return null; } },
+  set(v){ try { localStorage.setItem(CLAVE, JSON.stringify(v)); } catch { /* sin almacenamiento */ } },
+  clear(){ try { localStorage.removeItem(CLAVE); } catch {} },
+};
+
+// ---------------------------------------------------------------- modelo
+let nodos = [], links = [], porNombre = new Map();
+function desdeDatos(d){
+  nodos = []; links = []; porNombre = new Map();
+  const n = d.nodos.length;
+  d.nodos.forEach(([tipo, nombre, nota], i) => {
+    const a = (i / n) * Math.PI * 2, r = tipo === "nucleo" ? 0 : 160 + Math.random() * 160;
+    const nodo = {id: nombre, tipo: TIPOS[tipo] ? tipo : "unidad", nota: nota || "", x: Math.cos(a) * r, y: Math.sin(a) * r, vx: 0, vy: 0, fijo: false};
+    nodos.push(nodo); porNombre.set(nombre, nodo);
+  });
+  const vistos = new Set();
+  d.links.forEach(([a, bs]) => (Array.isArray(bs) ? bs : [bs]).forEach(b => agregarLink(a, b, vistos)));
+  calcularGrados();
+}
+function agregarLink(a, b, vistos){
+  const A = porNombre.get(a), B = porNombre.get(b);
+  if (!A || !B || A === B) return false;
+  const k = [a, b].sort().join("\u0000");
+  const set = vistos || new Set(links.map(l => [l.a.id, l.b.id].sort().join("\u0000")));
+  if (set.has(k)) return false;
+  set.add(k); links.push({a: A, b: B}); return true;
+}
+function calcularGrados(){
+  nodos.forEach(n => n.grado = 0);
+  links.forEach(l => { l.a.grado++; l.b.grado++; });
+  nodos.forEach(n => n.r = n.tipo === "nucleo" ? 15 : 4.5 + Math.sqrt(n.grado) * 2.1);
+}
+function aDatos(){
+  const agrupados = new Map();
+  links.forEach(l => { if (l.a.vivo || l.b.vivo) return; if (!agrupados.has(l.a.id)) agrupados.set(l.a.id, []); agrupados.get(l.a.id).push(l.b.id); });
+  return {nodos: nodos.filter(n => !n.vivo).map(n => [n.tipo, n.id, n.nota]), links: [...agrupados.entries()]};
+}
+function guardar(){ store.set(aDatos()); }
+
+desdeDatos(store.get() || BASE);
+
+// Dentro del Centro de Mando: agrega el equipo y sus agentes en vivo (no se guardan)
+async function cargarEquipo(){
+  try {
+    const r = await fetch("/api/estado", {credentials: "same-origin"});
+    if (!r.ok) return;
+    const e = await r.json();
+    const centro = porNombre.get("Centro de Mando") || porNombre.get("00 - YAELCORE-OS (Núcleo)");
+    if (!centro) return;
+    const nuevo = (id, tipo, extra) => {
+      if (porNombre.has(id)) return porNombre.get(id);
+      const n = {id, tipo, nota: "", x: centro.x + (Math.random() - .5) * 120, y: centro.y + (Math.random() - .5) * 120, vx: 0, vy: 0, fijo: false, vivo: true, ...extra};
+      nodos.push(n); porNombre.set(id, n); return n;
+    };
+    const miembros = new Map();
+    (e.miembros || []).forEach(m => {
+      const n = nuevo(m.nombre, "equipo", {color: m.color, nota: `${m.puesto || m.rol} · dato en vivo del Centro de Mando`});
+      miembros.set(m.id, n); agregarLink(centro.id, n.id);
+    });
+    (e.agentes || []).forEach(a => {
+      const n = nuevo(a.nombre, "agente", {nota: `${a.mision || ""}\nTareas abiertas: ${a.abiertas ?? "-"} · hechas: ${a.hechas ?? "-"}`.trim()});
+      const op = miembros.get(a.operador_id);
+      agregarLink(op ? op.id : centro.id, n.id);
+    });
+    calcularGrados(); calor = Math.max(calor, .7);
+  } catch { /* fuera del Centro de Mando: solo la red guardada */ }
+}
+cargarEquipo();
+
+// ---------------------------------------------------------------- lienzo
+const cv = document.getElementById("c"), ctx = cv.getContext("2d");
+let W = 0, H = 0, dpr = 1;
+const cam = {x: 0, y: 0, z: 1};
+function ajustar(){
+  dpr = Math.min(window.devicePixelRatio || 1, 2);
+  W = innerWidth; H = innerHeight;
+  cv.width = W * dpr; cv.height = H * dpr;
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+}
+addEventListener("resize", ajustar); ajustar();
+cam.z = Math.min(W, H) / 820;
+
+const aPantalla = (x, y) => [(x - cam.x) * cam.z + W / 2, (y - cam.y) * cam.z + H / 2];
+const aMundo = (sx, sy) => [(sx - W / 2) / cam.z + cam.x, (sy - H / 2) / cam.z + cam.y];
+
+// ---------------------------------------------------------------- estado de vista
+let hover = null, seleccion = null, arrastre = null, paneo = null, conectando = null;
+let filtro = "", ocultos = new Set(), pulsosOn = true, calor = 1;
+const pulsos = [];
+
+function visible(n){ return !ocultos.has(n.tipo); }
+function vecinos(n){
+  const s = new Set([n]);
+  links.forEach(l => { if (l.a === n) s.add(l.b); if (l.b === n) s.add(l.a); });
+  return s;
+}
+
+// ---------------------------------------------------------------- física
+function paso(){
+  const vis = nodos.filter(visible);
+  for (let i = 0; i < vis.length; i++) {
+    const a = vis[i];
+    for (let j = i + 1; j < vis.length; j++) {
+      const b = vis[j];
+      let dx = b.x - a.x, dy = b.y - a.y, d2 = dx * dx + dy * dy || 0.01;
+      const f = 9000 / d2, d = Math.sqrt(d2);
+      dx /= d; dy /= d;
+      a.vx -= dx * f; a.vy -= dy * f; b.vx += dx * f; b.vy += dy * f;
+    }
+  }
+  links.forEach(l => {
+    if (!visible(l.a) || !visible(l.b)) return;
+    const dx = l.b.x - l.a.x, dy = l.b.y - l.a.y, d = Math.hypot(dx, dy) || 1;
+    const largo = (l.a.tipo === "nucleo" || l.b.tipo === "nucleo") ? 250 : 150;
+    const f = (d - largo) * 0.012;
+    const fx = dx / d * f, fy = dy / d * f;
+    l.a.vx += fx; l.a.vy += fy; l.b.vx -= fx; l.b.vy -= fy;
+  });
+  vis.forEach(n => {
+    n.vx -= n.x * 0.0018; n.vy -= n.y * 0.0018;
+    if (n.fijo) { n.vx = n.vy = 0; return; }
+    n.vx *= 0.82; n.vy *= 0.82;
+    const v = Math.hypot(n.vx, n.vy), max = 12 * calor + 0.4;
+    if (v > max) { n.vx *= max / v; n.vy *= max / v; }
+    n.x += n.vx * calor; n.y += n.vy * calor;
+  });
+  calor = Math.max(0.08, calor * 0.995);
+}
+
+// ---------------------------------------------------------------- dibujo
+function dibujar(t){
+  ctx.clearRect(0, 0, W, H);
+  const foco = seleccion || hover;
+  const cerca = foco ? vecinos(foco) : null;
+  const q = filtro.toLowerCase();
+
+  // enlaces
+  links.forEach(l => {
+    if (!visible(l.a) || !visible(l.b)) return;
+    const [x1, y1] = aPantalla(l.a.x, l.a.y), [x2, y2] = aPantalla(l.b.x, l.b.y);
+    const activo = foco && (l.a === foco || l.b === foco);
+    ctx.strokeStyle = activo ? hexA(TIPOS[foco.tipo].color, .9) : (foco ? "rgba(120,120,120,.08)" : "rgba(140,140,140,.28)");
+    ctx.lineWidth = activo ? 1.6 : 1;
+    ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
+  });
+
+  // pulsos (señales tipo neurona)
+  if (pulsosOn) {
+    if (Math.random() < 0.18 && links.length) {
+      const l = links[(Math.random() * links.length) | 0];
+      if (visible(l.a) && visible(l.b)) pulsos.push({l, t: 0, v: 0.008 + Math.random() * 0.012, inv: Math.random() < .5});
+    }
+    for (let i = pulsos.length - 1; i >= 0; i--) {
+      const p = pulsos[i]; p.t += p.v;
+      if (p.t >= 1) { pulsos.splice(i, 1); continue; }
+      const A = p.inv ? p.l.b : p.l.a, B = p.inv ? p.l.a : p.l.b;
+      if (!visible(A) || !visible(B)) continue;
+      const [x1, y1] = aPantalla(A.x, A.y), [x2, y2] = aPantalla(B.x, B.y);
+      const x = x1 + (x2 - x1) * p.t, y = y1 + (y2 - y1) * p.t;
+      const tenue = foco && !(cerca.has(A) && cerca.has(B));
+      ctx.fillStyle = hexA(TIPOS[A.tipo].color, tenue ? .15 : .95);
+      ctx.beginPath(); ctx.arc(x, y, 2.2, 0, 7); ctx.fill();
+    }
+  }
+
+  // nodos
+  ctx.textAlign = "center"; ctx.textBaseline = "top";
+  nodos.forEach(n => {
+    if (!visible(n)) return;
+    const [x, y] = aPantalla(n.x, n.y);
+    const r = n.r * Math.max(.55, Math.min(cam.z, 1.6));
+    const coincide = q && n.id.toLowerCase().includes(q);
+    const tenue = (foco && !cerca.has(n)) || (q && !coincide);
+    const col = n.color || TIPOS[n.tipo].color;
+    if (n.tipo === "nucleo" || n === foco || coincide) {
+      const g = ctx.createRadialGradient(x, y, r * .4, x, y, r * 3.2);
+      g.addColorStop(0, hexA(col, tenue ? .08 : .35)); g.addColorStop(1, hexA(col, 0));
+      ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, r * 3.2, 0, 7); ctx.fill();
+    }
+    ctx.fillStyle = hexA(col, tenue ? .18 : 1);
+    ctx.beginPath(); ctx.arc(x, y, r, 0, 7); ctx.fill();
+    if (n === seleccion || n === conectando) { ctx.strokeStyle = "#fff"; ctx.lineWidth = 1.5; ctx.stroke(); }
+    const mostrar = cam.z > .55 || n === foco || n.tipo === "nucleo" || n.grado > 6 || coincide || (cerca && cerca.has(n));
+    if (mostrar) {
+      const fs = Math.round(Math.max(10, Math.min(14, 12 * cam.z)) * (n.tipo === "nucleo" ? 1.2 : 1));
+      ctx.font = `${n === foco ? 600 : 400} ${fs}px Inter, "Segoe UI", system-ui, sans-serif`;
+      ctx.fillStyle = tenue ? "rgba(220,221,222,.18)" : "rgba(220,221,222,.92)";
+      ctx.fillText(n.id, x, y + r + 4);
+    }
+  });
+}
+function hexA(hex, a){
+  const v = parseInt(hex.slice(1), 16);
+  return `rgba(${v >> 16},${(v >> 8) & 255},${v & 255},${a})`;
+}
+
+function ciclo(t){ paso(); dibujar(t); requestAnimationFrame(ciclo); }
+requestAnimationFrame(ciclo);
+
+// ---------------------------------------------------------------- interacción
+function nodoEn(sx, sy){
+  const [mx, my] = aMundo(sx, sy);
+  let mejor = null, md = Infinity;
+  nodos.forEach(n => {
+    if (!visible(n)) return;
+    const d = Math.hypot(n.x - mx, n.y - my), lim = (n.r + 6) / Math.min(cam.z, 1);
+    if (d < lim && d < md) { md = d; mejor = n; }
+  });
+  return mejor;
+}
+cv.addEventListener("pointerdown", e => {
+  cv.setPointerCapture(e.pointerId);
+  const n = nodoEn(e.offsetX, e.offsetY);
+  if (n) { arrastre = {n, sx: e.offsetX, sy: e.offsetY, movido: false}; n.fijo = true; }
+  else paneo = {sx: e.offsetX, sy: e.offsetY, cx: cam.x, cy: cam.y, movido: false};
+  cv.classList.add("dragging");
+});
+cv.addEventListener("pointermove", e => {
+  if (arrastre) {
+    if (Math.hypot(e.offsetX - arrastre.sx, e.offsetY - arrastre.sy) > 3) arrastre.movido = true;
+    const [x, y] = aMundo(e.offsetX, e.offsetY);
+    arrastre.n.x = x; arrastre.n.y = y; calor = Math.max(calor, .5);
+  } else if (paneo) {
+    if (Math.hypot(e.offsetX - paneo.sx, e.offsetY - paneo.sy) > 3) paneo.movido = true;
+    cam.x = paneo.cx - (e.offsetX - paneo.sx) / cam.z; cam.y = paneo.cy - (e.offsetY - paneo.sy) / cam.z;
+  } else {
+    hover = nodoEn(e.offsetX, e.offsetY);
+    cv.style.cursor = hover ? "pointer" : "grab";
+  }
+});
+cv.addEventListener("pointerup", e => {
+  cv.classList.remove("dragging");
+  if (arrastre) {
+    arrastre.n.fijo = false;
+    if (!arrastre.movido) clicNodo(arrastre.n);
+    arrastre = null; return;
+  }
+  if (paneo && !paneo.movido) { seleccion = null; cerrarPanel(); }
+  paneo = null;
+});
+cv.addEventListener("wheel", e => {
+  e.preventDefault();
+  const [mx, my] = aMundo(e.offsetX, e.offsetY);
+  cam.z = Math.max(.2, Math.min(4, cam.z * (e.deltaY < 0 ? 1.12 : 1 / 1.12)));
+  const [nx, ny] = aMundo(e.offsetX, e.offsetY);
+  cam.x += mx - nx; cam.y += my - ny;
+}, {passive: false});
+
+function clicNodo(n){
+  if (conectando) {
+    if (conectando !== n) {
+      if (agregarLink(conectando.id, n.id)) { calcularGrados(); guardar(); aviso(`Conectado: ${conectando.id} ↔ ${n.id}`); calor = .6; }
+      else aviso("Ya estaban conectados");
+    }
+    conectando = null; document.getElementById("bConectar").classList.remove("on");
+    abrirPanel(n); return;
+  }
+  abrirPanel(n);
+}
+
+// ---------------------------------------------------------------- panel
+const $ = id => document.getElementById(id);
+function abrirPanel(n){
+  seleccion = n;
+  $("pNombre").textContent = n.id;
+  $("pTipo").innerHTML = `<i style="background:${TIPOS[n.tipo].color}"></i>${TIPOS[n.tipo].nombre}`;
+  $("pNota").value = n.nota || "";
+  const vs = [...vecinos(n)].filter(v => v !== n).sort((a, b) => a.id.localeCompare(b.id));
+  $("pGrado").textContent = `(${vs.length})`;
+  const ul = $("pLinks"); ul.innerHTML = "";
+  vs.forEach(v => {
+    const li = document.createElement("li");
+    const a = document.createElement("a"); a.textContent = v.id; a.onclick = () => { centrar(v); abrirPanel(v); };
+    const b = document.createElement("button"); b.textContent = "quitar"; b.title = "Quitar conexión";
+    b.onclick = () => { links = links.filter(l => !((l.a === n && l.b === v) || (l.a === v && l.b === n))); calcularGrados(); guardar(); abrirPanel(n); };
+    li.append(a, b); ul.append(li);
+  });
+  $("panel").classList.add("show");
+}
+function cerrarPanel(){ $("panel").classList.remove("show"); seleccion = null; }
+function centrar(n){ cam.x = n.x; cam.y = n.y; }
+$("cerrar").onclick = cerrarPanel;
+$("pNota").addEventListener("input", e => { if (seleccion) { seleccion.nota = e.target.value; guardar(); } });
+$("pBorrar").onclick = () => {
+  if (!seleccion) return;
+  const n = seleccion;
+  nodos = nodos.filter(x => x !== n); porNombre.delete(n.id);
+  links = links.filter(l => l.a !== n && l.b !== n);
+  calcularGrados(); guardar(); cerrarPanel(); aviso(`Nodo borrado: ${n.id}`);
+};
+$("pRenombrar").onclick = () => {
+  if (!seleccion) return;
+  abrirDatos("Renombrar nodo", seleccion.id, "Guardar", txt => {
+    const nuevo = txt.trim();
+    if (!nuevo || nuevo === seleccion.id) return;
+    if (porNombre.has(nuevo)) return aviso("Ya existe un nodo con ese nombre");
+    porNombre.delete(seleccion.id); seleccion.id = nuevo; porNombre.set(nuevo, seleccion);
+    guardar(); abrirPanel(seleccion);
+  }, true);
+};
+
+// ---------------------------------------------------------------- barra
+$("buscar").addEventListener("input", e => {
+  filtro = e.target.value.trim();
+  const n = filtro && nodos.find(x => visible(x) && x.id.toLowerCase().includes(filtro.toLowerCase()));
+  if (n) centrar(n);
+});
+$("buscar").addEventListener("keydown", e => {
+  if (e.key !== "Enter") return;
+  const n = nodos.find(x => visible(x) && x.id.toLowerCase().includes(filtro.toLowerCase()));
+  if (n) { centrar(n); abrirPanel(n); }
+});
+$("bConectar").onclick = () => {
+  if (conectando) { conectando = null; $("bConectar").classList.remove("on"); return; }
+  if (seleccion) { conectando = seleccion; $("bConectar").classList.add("on"); aviso(`Ahora haz clic en el nodo que quieres unir con «${seleccion.id}»`); }
+  else aviso("Primero haz clic en un nodo y luego en Conectar");
+};
+$("bPulsos").onclick = () => { pulsosOn = !pulsosOn; $("bPulsos").classList.toggle("on", pulsosOn); pulsos.length = 0; };
+$("bReset").onclick = () => {
+  abrirDatos("Restablecer", "Se borrarán tus cambios y volverá la red original. Escribe SI para confirmar.", "Restablecer", txt => {
+    if (txt.trim().toUpperCase() !== "SI") return;
+    store.clear(); desdeDatos(BASE); calor = 1; cerrarPanel(); aviso("Red original restablecida");
+  }, false, true);
+};
+
+// chips de tipo
+const chips = $("chips");
+Object.entries(TIPOS).forEach(([k, t]) => {
+  const c = document.createElement("div"); c.className = "chip";
+  c.innerHTML = `<i style="background:${t.color}"></i>${t.nombre}`;
+  c.onclick = () => { ocultos.has(k) ? ocultos.delete(k) : ocultos.add(k); c.classList.toggle("off", ocultos.has(k)); calor = Math.max(calor, .5); };
+  chips.append(c);
+});
+
+// nuevo nodo
+const selTipo = $("selTipo");
+Object.entries(TIPOS).forEach(([k, t]) => selTipo.insertAdjacentHTML("beforeend", `<option value="${k}">${t.nombre}</option>`));
+selTipo.value = "unidad";
+$("bNuevo").onclick = () => {
+  const sc = $("selCon"); sc.innerHTML = `<option value="">(sin conexión)</option>`;
+  [...nodos].sort((a, b) => a.id.localeCompare(b.id)).forEach(n => {
+    const o = document.createElement("option"); o.value = n.id; o.textContent = n.id; sc.append(o);
+  });
+  sc.value = seleccion ? seleccion.id : "00 - YAELCORE-OS (Núcleo)";
+  $("fNuevo").reset(); selTipo.value = "unidad"; sc.value = seleccion ? seleccion.id : "00 - YAELCORE-OS (Núcleo)";
+  $("dNuevo").showModal();
+};
+$("cNuevo").onclick = () => $("dNuevo").close();
+$("fNuevo").addEventListener("submit", e => {
+  e.preventDefault();
+  const f = e.target, nombre = f.nombre.value.trim();
+  if (!nombre) return;
+  if (porNombre.has(nombre)) { aviso("Ya existe un nodo con ese nombre"); return; }
+  const base = porNombre.get(f.con.value);
+  const n = {id: nombre, tipo: f.tipo.value, nota: "", x: (base ? base.x : 0) + (Math.random() - .5) * 80, y: (base ? base.y : 0) + (Math.random() - .5) * 80, vx: 0, vy: 0, fijo: false};
+  nodos.push(n); porNombre.set(nombre, n);
+  if (base) agregarLink(base.id, nombre);
+  calcularGrados(); guardar(); calor = .8; $("dNuevo").close(); abrirPanel(n);
+});
+
+// exportar / importar
+let alAplicar = null;
+function abrirDatos(titulo, texto, boton, fn, corto, soloLectura){
+  $("dTitulo").textContent = titulo;
+  const ta = $("taDatos"); ta.value = soloLectura ? "" : texto; ta.placeholder = soloLectura ? texto : "";
+  ta.style.minHeight = corto || soloLectura ? "60px" : "160px";
+  $("okDatos").textContent = boton; $("okDatos").style.display = fn ? "" : "none";
+  alAplicar = fn; $("dDatos").showModal(); ta.focus();
+}
+$("cDatos").onclick = () => $("dDatos").close();
+$("fDatos").addEventListener("submit", e => {
+  e.preventDefault();
+  const fn = alAplicar; $("dDatos").close();
+  if (fn) fn($("taDatos").value);
+});
+$("bExportar").onclick = async () => {
+  const json = JSON.stringify(aDatos(), null, 1);
+  try { await navigator.clipboard.writeText(json); aviso("Datos copiados. Guárdalos en una nota de Obsidian."); }
+  catch { abrirDatos("Copia estos datos", json, null, null); $("taDatos").select(); }
+};
+$("bImportar").onclick = () => abrirDatos("Pega aquí los datos de la red", "", "Aplicar", txt => {
+  try {
+    const d = JSON.parse(txt);
+    if (!Array.isArray(d.nodos) || !Array.isArray(d.links)) throw 0;
+    desdeDatos(d); guardar(); calor = 1; cerrarPanel(); aviso(`Red cargada: ${nodos.length} nodos`);
+  } catch { aviso("Esos datos no tienen el formato correcto"); }
+});
+
+addEventListener("keydown", e => {
+  if (e.key === "Escape") { conectando = null; $("bConectar").classList.remove("on"); cerrarPanel(); }
+  if (e.key === "/" && document.activeElement.tagName !== "INPUT" && document.activeElement.tagName !== "TEXTAREA") { e.preventDefault(); $("buscar").focus(); }
+});
+
+let tAviso;
+function aviso(txt){
+  const t = $("toast"); t.textContent = txt; t.style.display = "block";
+  clearTimeout(tAviso); tAviso = setTimeout(() => t.style.display = "none", 2600);
+}
+})();
+</script>
+</body>
+</html>
