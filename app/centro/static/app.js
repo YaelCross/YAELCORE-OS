@@ -172,6 +172,8 @@ function pintar() {
   $("#ia-estado").innerHTML = ia.length
     ? `<span class="bolita" style="background:var(--verde)"></span>IA: ${esc(ia.join(" + "))}`
     : `<span class="bolita" style="background:var(--rojo)"></span>IA sin conectar`;
+  const au = S.estado.automatizacion;
+  if (au) $("#ia-estado").innerHTML += ` · <span title="Automatizaciones de hoy: ${au.hoy_ok} listas, ${au.hoy_fallos} con fallo. Resumen diario ${esc(au.resumen_hora)}">Auto ${au.activo ? "✓" : "✕"}${au.hoy_ok ? " " + au.hoy_ok : ""}</span>`;
   $("#pestana-equipo").classList.toggle("oculto", !esJefe());
   $("#pestana-red").classList.toggle("oculto", !esJefe());
   $("#pestana-agente").classList.toggle("oculto", !S.agenteId);

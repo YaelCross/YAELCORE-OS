@@ -110,3 +110,18 @@ CENTRO_PIN_FRIDA=...
 
 Si alguien no tiene PIN, puede entrar sin contraseña (útil solo para
 pruebas). Los datos se guardan en `data/centro_mando.db` (no se sube a git).
+
+## Centro de Mando · Automatización y respaldo
+
+**Automatización (se activa sola al encender el Centro de Mando):**
+- Las tareas marcadas como *automatizables* se ejecutan a su hora (el `HH:MM` al inicio del título). El agente las trabaja con IA y las deja en **Revisión** con el resultado; una persona decide si pasan a *Hecho*.
+- Las tareas **diarias** que quedaron abiertas se renuevan cada día con la fecha de hoy.
+- A las `CENTRO_RESUMEN_HORA` (18:30 por defecto) el agente del jefe recibe un **resumen del día** con números reales del tablero.
+- La IA no tiene acceso a Meta Ads, Mercado Libre ni redes sociales: prepara borradores y checklists y dice qué datos faltan. No inventa cifras.
+- Para apagarla: `CENTRO_AUTOMATIZAR=no` en `.env`.
+
+**Respaldo de conectividad:**
+- IA: si Claude falla, responde ChatGPT automáticamente (y al revés). Si ambas fallan, la tarea se reintenta cada 15 minutos (máx. 3 veces al día).
+- Acceso: si la red de la oficina falla o alguien está fuera, ejecuta `acceso_remoto.bat` para obtener una liga HTTPS temporal (requiere `winget install --id Cloudflare.cloudflared`).
+
+Pruebas: `.venv\Scripts\python.exe -m unittest test_centro_automatizacion test_centro_privacidad -v`

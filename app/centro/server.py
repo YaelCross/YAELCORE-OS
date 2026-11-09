@@ -49,6 +49,7 @@ class CentroDeMando:
     def __init__(self, almacen=None, copiloto=None):
         self.db = almacen or Almacen()
         self.ia = copiloto or CopilotoIA()
+        self.auto = None  # motor de automatización (se arranca en iniciar())
         self.sesiones = {}
         self.fallos = {}
 
@@ -137,6 +138,7 @@ class CentroDeMando:
             "actividad": self.db.actividad() if jefe else
                          [x for x in self.db.actividad(200) if x["autor_id"] == yo["id"]][:40],
             "ia": self.ia.disponibles(),
+            "automatizacion": self.auto.estado() if (self.auto and jefe) else None,
             "catalogos": {
                 "estados": ESTADOS_TAREA, "prioridades": PRIORIDADES,
                 "recurrencias": RECURRENCIAS, "tipos": TIPOS_CONOCIMIENTO,
@@ -544,6 +546,9 @@ def iniciar(host=None, puerto=None, abrir_navegador=False):
     puerto = int(puerto or os.getenv("CENTRO_PUERTO", "8765"))
 
     centro = CentroDeMando()
+    from app.centro.automatizacion import Automatizador
+    centro.auto = Automatizador(centro)
+    centro.auto.start()
     servidor = ThreadingHTTPServer((host, puerto), crear_manejador(centro))
 
     url_local = f"http://localhost:{puerto}"
@@ -559,6 +564,11 @@ def iniciar(host=None, puerto=None, abrir_navegador=False):
               "(define CENTRO_PIN_<NOMBRE> en .env)")
     ias = centro.ia.disponibles()
     print(" IA conectada:     ", " y ".join(ias) if ias else "ninguna (revisa .env)")
+    if len(ias) > 1:
+        print(" Respaldo de IA:    si", ias[0], "falla, responde", ias[1])
+    print(" Automatización:   ", "activa (resumen diario " + os.getenv("CENTRO_RESUMEN_HORA", "18:30") + ")"
+          if os.getenv("CENTRO_AUTOMATIZAR", "si").lower() not in ("no", "0", "false") else "apagada")
+    print(" Acceso de respaldo: ejecuta acceso_remoto.bat si la red local falla")
     print("=" * 56)
 
     if abrir_navegador:
