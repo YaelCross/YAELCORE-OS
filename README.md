@@ -23,6 +23,18 @@ Para desactivarlo, haz doble clic en **`quitar_inicio_automatico.bat`**.
 > Si mueves la carpeta del proyecto a otro lugar, vuelve a ejecutar
 > `instalar_inicio_automatico.bat` para actualizar el acceso directo.
 
+Al encender, el lanzador espera 20 segundos antes de arrancar para que
+Windows termine de cargar el audio y la red.
+
+### Si no arranca solo
+
+Haz doble clic en **`diagnosticar_inicio.bat`**. Revisa que exista el acceso
+directo, que esté `.venv\Scripts\pythonw.exe`, que no esté desactivado en el
+Administrador de tareas y muestra los últimos registros:
+
+- `logs\lanzador.log`: cada vez que Windows ejecutó el lanzador.
+- `logs\yaelcore.log`: mensajes y errores de YAELCORE-OS al arrancar sin consola.
+
 ## Cerebro: Claude + ChatGPT trabajando juntos
 
 JARVIS usa dos inteligencias. Por defecto trabajan **en equipo**:
