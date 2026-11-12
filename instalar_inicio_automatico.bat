@@ -15,7 +15,7 @@ if not exist "%~dp0.venv\Scripts\pythonw.exe" (
 )
 
 set "CARPETA=%~dp0"
-powershell -NoProfile -ExecutionPolicy Bypass -Command "$s = (New-Object -ComObject WScript.Shell).CreateShortcut($env:DESTINO); $s.TargetPath = $env:WINDIR + '\System32\wscript.exe'; $s.Arguments = [char]34 + $env:LANZADOR + [char]34; $s.WorkingDirectory = $env:CARPETA; $s.Description = 'YAELCORE-OS'; $s.Save()"
+powershell -NoProfile -ExecutionPolicy Bypass -Command "$s = (New-Object -ComObject WScript.Shell).CreateShortcut($env:DESTINO); $s.TargetPath = $env:WINDIR + '\System32\wscript.exe'; $s.Arguments = [char]34 + $env:LANZADOR + [char]34 + ' /inicio'; $s.WorkingDirectory = $env:CARPETA; $s.Description = 'YAELCORE-OS'; $s.Save()"
 
 if exist "%DESTINO%" (
     echo [OK] YAELCORE-OS se iniciara automaticamente al encender la computadora.
