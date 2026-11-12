@@ -20,7 +20,7 @@ class Assistant:
                 "No se encontró OPENAI_API_KEY en el archivo .env"
             )
 
-        self.client = OpenAI(api_key=api_key)
+        self.client = OpenAI(api_key=api_key, timeout=float(os.getenv("IA_TIMEOUT", "90")), max_retries=2)
         self.model = os.getenv("OPENAI_MODEL", "gpt-5")
 
     def ask(self, question, instructions, history=None):

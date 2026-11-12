@@ -20,7 +20,7 @@ class ClaudeAssistant:
                 "No se encontró ANTHROPIC_API_KEY en el archivo .env"
             )
 
-        self.client = Anthropic(api_key=api_key)
+        self.client = Anthropic(api_key=api_key, timeout=float(os.getenv("IA_TIMEOUT", "90")), max_retries=2)
         self.model = os.getenv("CLAUDE_MODEL", "claude-sonnet-5-5")
 
     def ask(self, question, instructions, history=None):

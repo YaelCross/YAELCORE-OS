@@ -9,6 +9,12 @@ Asistente personal de escritorio para Windows.
 
 Ambos usan el entorno virtual `.venv` dentro de esta carpeta.
 
+## Actualizar
+
+Haz doble clic en **`actualizar_yaelcore.bat`**: descarga la última versión
+desde GitHub (`git pull origin main`) e instala las dependencias nuevas.
+Necesita Git instalado y que esta carpeta sea un clon del repositorio.
+
 ## Iniciar automáticamente al encender la computadora
 
 1. Asegúrate de que `.venv` existe y tiene las dependencias instaladas
@@ -56,3 +62,77 @@ puedes hacer preguntas de seguimiento ("¿y en inglés?").
 
 El modo inicial se cambia en `.env` con `JARVIS_MODO=equipo|claude|chatgpt`,
 y los modelos con `OPENAI_MODEL` y `CLAUDE_MODEL`.
+
+## Centro de Mando: el equipo trabajando con sus agentes
+
+Interfaz web donde cada persona real (Yael, Frida, Efren, Nova…) controla
+a su agente, le pasa toda la información necesaria y automatiza tareas.
+Replica el diagrama de la organización: Frente, front, back, interfaz,
+núcleo, agentes, integrantes MKT, jefe Yael, Frida, Efren y Nova.
+
+### Cómo abrirlo
+
+- Doble clic en **`centro_mando.bat`**, o
+- dile a JARVIS **"abre el centro de mando"**, o
+- `python centro_mando.py`
+
+En la consola aparecen dos direcciones:
+
+- **En esta PC:** `http://localhost:8765`
+- **Para tu equipo:** `http://<ip-de-tu-pc>:8765` — compártela con Frida,
+  Efren y Nova; entran desde su navegador si están en la misma red (Wi-Fi).
+  Si Windows pregunta por el firewall, permite el acceso en redes privadas.
+
+### Qué puede hacer cada quien
+
+| Sección | Para qué sirve |
+|---------|----------------|
+| **Mapa** | Tu diagrama en vivo. Toca a una persona para abrir su agente o un área para ver sus tareas. Muestra tareas abiertas y vencidas. |
+| **Agente** | Misión del agente, sus tareas, **"Pasarle información"** (su memoria) y el **canal** con el equipo y el **copiloto IA**. |
+| **Tareas** | Tablero Pendiente → En curso → Revisión → Hecho (arrastra las tarjetas). Filtra por agente, área o persona. |
+| **Conocimiento** | Toda la información que el equipo le ha pasado a los agentes. Yael puede enviar información general a **todos** los agentes. |
+| **Equipo** | (Solo Yael) Crear agentes, asignar quién los controla y agregar integrantes. |
+
+**Copiloto IA:** cada agente usa Claude/ChatGPT con su misión, su
+información y sus tareas. Botones rápidos: *¿Qué hago primero?*,
+*¿Qué automatizo?*, *Resumen para Yael* y *¿Qué info me falta?*.
+
+**Automatización:** marca una tarea como *se repite* (diaria, semanal,
+mensual). Al terminarla, el sistema crea sola la siguiente. Marca también
+las tareas *automatizables* para que el copiloto proponga cómo automatizarlas.
+
+**Permisos:** Yael ve y controla todo. Cada integrante opera su propio
+agente; cualquiera puede pasarle tareas o mensajes a otro agente para
+coordinarse.
+
+### PIN de acceso
+
+Define un PIN por persona en `.env` (ver `.env.example`):
+
+```
+CENTRO_PIN_YAEL=1234
+CENTRO_PIN_FRIDA=...
+```
+
+Si alguien no tiene PIN, puede entrar sin contraseña (útil solo para
+pruebas). Los datos se guardan en `data/centro_mando.db` (no se sube a git).
+
+## Centro de Mando · Automatización y respaldo
+
+**Automatización (se activa sola al encender el Centro de Mando):**
+- Las tareas marcadas como *automatizables* se ejecutan a su hora (el `HH:MM` al inicio del título). El agente las trabaja con IA y las deja en **Revisión** con el resultado; una persona decide si pasan a *Hecho*.
+- Las tareas **diarias** que quedaron abiertas se renuevan cada día con la fecha de hoy.
+- A las `CENTRO_RESUMEN_HORA` (18:30 por defecto) el agente del jefe recibe un **resumen del día** con números reales del tablero.
+- La IA no tiene acceso a Meta Ads, Mercado Libre ni redes sociales: prepara borradores y checklists y dice qué datos faltan. No inventa cifras.
+- Para apagarla: `CENTRO_AUTOMATIZAR=no` en `.env`.
+
+**Respaldo de conectividad:**
+- IA: si Claude falla, responde ChatGPT automáticamente (y al revés). Si ambas fallan, la tarea se reintenta cada 15 minutos (máx. 3 veces al día).
+- Acceso: si la red de la oficina falla o alguien está fuera, ejecuta `acceso_remoto.bat` para obtener una liga HTTPS temporal (requiere `winget install --id Cloudflare.cloudflared`).
+
+Pruebas: `.venv\Scripts\python.exe -m unittest test_centro_automatizacion test_centro_privacidad -v`
+
+### Meta Ads (solo lectura)
+Las tareas cuyo título habla de campañas/publicidad/anuncios reciben los **datos reales** de Meta Ads (ayer y últimos 7 días por campaña: gasto, resultados, costo por resultado, CTR, CPC, frecuencia) más alertas automáticas (gasto sin resultados, CTR bajo, fatiga, costo por resultado +30 %). El jefe también puede preguntar por campañas en el chat de su agente. El conector **no modifica** campañas ni presupuestos.
+
+Configura `META_ACCESS_TOKEN` y `META_AD_ACCOUNTS` en `.env` y verifica con `.venv\Scripts\python.exe probar_meta.py`.

@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>YAELCORE-OS · Centro de Mando</title>
+  <link rel="stylesheet" href="/static/app.css">
+</head>
+<body>
+
+  <!-- ============ ACCESO ============ -->
+  <section id="login" class="login oculto">
+    <div class="login-caja">
+      <div class="marca"><span class="punto"></span>YAELCORE-OS</div>
+      <h1>Centro de Mando</h1>
+      <p class="tenue">¿Quién eres? Cada persona controla a su agente.</p>
+      <div id="login-miembros" class="login-miembros"></div>
+      <form id="login-form" class="oculto">
+        <label>PIN de <b id="login-nombre"></b>
+          <input id="login-pin" type="password" inputmode="numeric" autocomplete="current-password">
+        </label>
+        <button class="btn primario" type="submit">Entrar</button>
+      </form>
+      <p id="login-error" class="error"></p>
+    </div>
+  </section>
+
+  <!-- ============ APLICACIÓN ============ -->
+  <section id="app" class="oculto">
+    <header class="barra">
+      <div class="marca"><span class="punto"></span>YAELCORE-OS <span class="tenue">· Centro de Mando</span></div>
+      <nav id="pestanas" class="pestanas">
+        <button data-vista="mapa" class="activa">Mapa</button>
+        <button data-vista="tareas">Tareas</button>
+        <button data-vista="conocimiento">Conocimiento</button>
+        <button data-vista="agente" id="pestana-agente" class="oculto">Agente</button>
+        <button data-vista="equipo" id="pestana-equipo" class="oculto">Equipo</button>
+        <button data-vista="red" id="pestana-red" class="oculto">Red</button>
+      </nav>
+      <div class="usuario">
+        <span id="ia-estado" class="chip"></span>
+        <span id="yo" class="chip"></span>
+        <button id="salir" class="btn fantasma">Salir</button>
+      </div>
+    </header>
+
+    <main>
+      <!-- MAPA -->
+      <div id="vista-mapa" class="vista">
+        <div class="mapa-layout">
+          <div class="tarjeta mapa-tarjeta">
+            <div class="tarjeta-cab">
+              <h2>Mapa de la organización</h2>
+              <span class="tenue">Toca a una persona o área para trabajar con ella</span>
+            </div>
+            <svg id="mapa" viewBox="0 0 1000 780" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Diagrama de la organización"></svg>
+          </div>
+          <aside class="lateral">
+            <div class="tarjeta">
+              <h2>Pulso del equipo</h2>
+              <div id="resumen" class="resumen"></div>
+            </div>
+            <div class="tarjeta">
+              <h2>Mis agentes</h2>
+              <div id="mis-agentes" class="lista-agentes"></div>
+            </div>
+            <div class="tarjeta">
+              <h2>Actividad</h2>
+              <ul id="actividad" class="actividad"></ul>
+            </div>
+          </aside>
+        </div>
+      </div>
+
+      <!-- TAREAS -->
+      <div id="vista-tareas" class="vista oculto">
+        <div class="herramientas">
+          <select id="filtro-agente"></select>
+          <label class="check"><input type="checkbox" id="filtro-auto"> Solo automatizables</label>
+          <span class="espacio"></span>
+          <button class="btn primario" data-nueva-tarea>+ Nueva tarea</button>
+        </div>
+        <div id="kanban" class="kanban"></div>
+      </div>
+
+      <!-- CONOCIMIENTO -->
+      <div id="vista-conocimiento" class="vista oculto">
+        <div class="dos-columnas">
+          <div class="tarjeta">
+            <h2>Pasar información a un agente</h2>
+            <p class="tenue">Todo lo que guardes aquí lo usa el copiloto de IA del agente para ayudar a su operador.</p>
+            <form id="form-ficha" class="formulario">
+              <label>Destino <select name="agente_id" id="ficha-destino"></select></label>
+              <label>Tipo <select name="tipo" id="ficha-tipo"></select></label>
+              <label>Título <input name="titulo" required maxlength="120" placeholder="Ej. Público objetivo de la marca"></label>
+              <label>Contenido <textarea name="contenido" rows="9" placeholder="Pega aquí la información, procesos, accesos (sin contraseñas), ejemplos…"></textarea></label>
+              <button class="btn primario" type="submit">Guardar información</button>
+            </form>
+          </div>
+          <div class="tarjeta">
+            <div class="tarjeta-cab">
+              <h2>Base de conocimiento</h2>
+              <input id="buscar-ficha" type="search" placeholder="Buscar…">
+            </div>
+            <div id="lista-fichas" class="fichas"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- AGENTE -->
+      <div id="vista-agente" class="vista oculto"></div>
+
+      <!-- EQUIPO (solo jefe) -->
+      <!-- RED NEURONAL -->
+      <div id="vista-red" class="vista oculto">
+        <iframe id="marco-red" title="Red neuronal de YAELCORE-OS" class="marco-red"></iframe>
+      </div>
+
+      <div id="vista-equipo" class="vista oculto">
+        <div class="dos-columnas">
+          <div class="tarjeta">
+            <h2>Crear agente</h2>
+            <form id="form-agente" class="formulario">
+              <label>Nombre <input name="nombre" required maxlength="60" placeholder="Ej. Agente de Redes"></label>
+              <label>Lo controla <select name="operador_id" id="agente-operador"></select></label>
+              <label>Área <select name="area" id="agente-area"></select></label>
+              <label>Misión <textarea name="mision" rows="4" placeholder="¿Para qué existe este agente? ¿Qué debe lograr?"></textarea></label>
+              <button class="btn primario" type="submit">Crear agente</button>
+            </form>
+          </div>
+          <div class="tarjeta">
+            <h2>Agregar integrante</h2>
+            <form id="form-miembro" class="formulario">
+              <label>Nombre <input name="nombre" required maxlength="40"></label>
+              <label>Puesto <input name="puesto" maxlength="60" placeholder="Ej. Integrante MKT"></label>
+              <label>Color <input name="color" type="color" value="#4fb3bf"></label>
+              <button class="btn primario" type="submit">Agregar</button>
+            </form>
+            <h2 class="separado">Equipo</h2>
+            <div id="lista-miembros" class="lista-agentes"></div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </section>
+
+  <!-- ============ MODAL TAREA ============ -->
+  <dialog id="modal-tarea" class="modal">
+    <form id="form-tarea" class="formulario" method="dialog">
+      <h2 id="modal-tarea-titulo">Nueva tarea</h2>
+      <label>Agente <select name="agente_id" id="tarea-agente"></select></label>
+      <label>Título <input name="titulo" required maxlength="160"></label>
+      <label>Detalle / información necesaria <textarea name="detalle" rows="5"></textarea></label>
+      <div class="fila">
+        <label>Prioridad <select name="prioridad" id="tarea-prioridad"></select></label>
+        <label>Fecha límite <input name="fecha_limite" type="date"></label>
+      </div>
+      <div class="fila">
+        <label>Estado <select name="estado" id="tarea-estado"></select></label>
+        <label>Se repite <select name="recurrencia" id="tarea-recurrencia"></select></label>
+      </div>
+      <label class="check"><input type="checkbox" name="automatizable"> Esta tarea se puede automatizar</label>
+      <label>Resultado / entrega <textarea name="resultado" rows="3" placeholder="Links, notas o resultado al terminar"></textarea></label>
+      <p id="tarea-error" class="error"></p>
+      <div class="acciones">
+        <button type="button" class="btn peligro oculto" id="tarea-borrar">Borrar</button>
+        <span class="espacio"></span>
+        <button type="button" class="btn fantasma" id="tarea-cancelar">Cancelar</button>
+        <button type="submit" class="btn primario">Guardar</button>
+      </div>
+    </form>
+  </dialog>
+
+  <div id="aviso" class="aviso"></div>
+  <script src="/static/app.js"></script>
+</body>
+</html>
