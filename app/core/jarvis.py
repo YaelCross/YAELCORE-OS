@@ -11,7 +11,7 @@ class Jarvis:
 
     def __init__(self):
         self.name = "JARVIS"
-        self.version = "0.2.0"
+        self.version = "0.3.0"
 
         self.state = JarvisState.BOOTING
 
@@ -40,7 +40,7 @@ class Jarvis:
         )
 
         print("=" * 50)
-        print(f"{self.name} OS v{self.version}")
+        print(f"YAELCORE-OS v{self.version}")
         print("=" * 50)
         print(mensaje)
         print("=" * 50)

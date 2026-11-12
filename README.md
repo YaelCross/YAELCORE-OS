@@ -9,6 +9,12 @@ Asistente personal de escritorio para Windows.
 
 Ambos usan el entorno virtual `.venv` dentro de esta carpeta.
 
+## Actualizar
+
+Haz doble clic en **`actualizar_yaelcore.bat`**: descarga la última versión
+desde GitHub (`git pull origin main`) e instala las dependencias nuevas.
+Necesita Git instalado y que esta carpeta sea un clon del repositorio.
+
 ## Iniciar automáticamente al encender la computadora
 
 1. Asegúrate de que `.venv` existe y tiene las dependencias instaladas
